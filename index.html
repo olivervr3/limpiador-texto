@@ -16,11 +16,16 @@
       width: 100%;
       height: 300px;
       margin-bottom: 1rem;
+      font-family: monospace;
     }
     button {
       margin: 0.25rem;
       padding: 0.5rem 1rem;
       font-size: 1rem;
+    }
+    #detectionResult {
+      margin-top: 1rem;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -36,6 +41,9 @@
   <button onclick="clean()">Limpiar texto</button>
   <button onclick="copy()">Copiar al portapapeles</button>
   <button onclick="download()">Descargar .txt</button>
+  <button onclick="detect()">Detectar caracteres especiales</button>
+
+  <p id="detectionResult"></p>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script>
@@ -57,11 +65,15 @@
             text += content.items.map(item => item.str).join(' ') + '\n';
           }
           inputText.value = text;
+          detect();
         };
         reader.readAsArrayBuffer(file);
       } else {
         const reader = new FileReader();
-        reader.onload = () => inputText.value = reader.result;
+        reader.onload = () => {
+          inputText.value = reader.result;
+          detect();
+        };
         reader.readAsText(file);
       }
     });
@@ -78,6 +90,7 @@
         .replace(/\r?\n\s*\r?\n/g, '\n')
         .trim();
       inputText.value = text;
+      detect();
     }
 
     function copy() {
@@ -94,6 +107,26 @@
       a.download = 'texto_limpio.txt';
       a.click();
       URL.revokeObjectURL(url);
+    }
+
+    function detect() {
+      const text = inputText.value;
+      const findings = [];
+
+      if (/[“”‘’]/.test(text)) findings.push("• Comillas tipográficas (“ ” ‘ ’)");
+      if (/—/.test(text)) findings.push("• Guiones largos (—)");
+      if (/\u00A0/.test(text)) findings.push("• Espacios no rompibles (U+00A0)");
+      if (/[\u200B\uFEFF]/.test(text)) findings.push("• Caracteres invisibles (U+200B, U+FEFF)");
+      if (/[^\x00-\x7F]/.test(text)) findings.push("• Caracteres Unicode fuera del ASCII estándar");
+
+      const resultEl = document.getElementById("detectionResult");
+      if (findings.length > 0) {
+        resultEl.style.color = "red";
+        resultEl.innerHTML = "⚠️ Se detectaron caracteres especiales:<br>" + findings.join("<br>");
+      } else {
+        resultEl.style.color = "green";
+        resultEl.textContent = "✅ No se detectaron caracteres especiales";
+      }
     }
   </script>
 </body>
