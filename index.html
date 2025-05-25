@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LimpiaTexto GPT</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 800px;
+      margin: auto;
+      padding: 2rem;
+      background-color: #f9f9f9;
+    }
+    textarea {
+      width: 100%;
+      height: 300px;
+      margin-bottom: 1rem;
+    }
+    button {
+      margin: 0.25rem;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧹 Limpiador de Texto GPT</h1>
+
+  <input type="file" id="fileInput" accept=".txt,.pdf" />
+  <br/><br/>
+
+  <textarea id="inputText" placeholder="Pega aquí tu texto o carga un archivo..."></textarea>
+  <br/>
+
+  <button onclick="clean()">Limpiar texto</button>
+  <button onclick="copy()">Copiar al portapapeles</button>
+  <button onclick="download()">Descargar .txt</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script>
+    const inputText = document.getElementById('inputText');
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (file.type === "application/pdf") {
+        const reader = new FileReader();
+        reader.onload = async function () {
+          const typedarray = new Uint8Array(this.result);
+          const pdf = await pdfjsLib.getDocument(typedarray).promise;
+          let text = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(item => item.str).join(' ') + '\n';
+          }
+          inputText.value = text;
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => inputText.value = reader.result;
+        reader.readAsText(file);
+      }
+    });
+
+    function clean() {
+      let text = inputText.value;
+      text = text
+        .replace(/[“”]/g, '"')
+        .replace(/[‘’]/g, "'")
+        .replace(/—/g, '-')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\u200B|\uFEFF/g, '')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\r?\n\s*\r?\n/g, '\n')
+        .trim();
+      inputText.value = text;
+    }
+
+    function copy() {
+      inputText.select();
+      document.execCommand('copy');
+      alert("Texto copiado al portapapeles");
+    }
+
+    function download() {
+      const blob = new Blob([inputText.value], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'texto_limpio.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
